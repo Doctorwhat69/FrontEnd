@@ -539,7 +539,8 @@ main {
 
 .js-modal-close {
   position: relative;
-  font-family: FontAwesome;
+  font-family: "Font Awesome 5 Free";
+  font-weight: bold;
   padding: 0px;
   font-size: 18px;
   max-width: 30px;

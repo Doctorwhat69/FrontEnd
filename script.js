@@ -354,7 +354,6 @@ const AddPictures = async function (event) {
           "le projet a été ajouté avec succès.";
         MessageConfirmationAjout.classList.add("delete-message");
         borderButton.appendChild(MessageConfirmationAjout);
-
         textAdd = true;
       }
 
