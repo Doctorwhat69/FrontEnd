@@ -1,7 +1,10 @@
 const reponse = await fetch("http://localhost:5678/api/works");
+const c = await fetch("http://localhost:5678/api/categories");
 let projets = await reponse.json();
+let categories = await c.json();
+let mettreAJourModale = true;
 
-function genererProjets(projets) {
+async function genererProjets(projets) {
   for (let i = 0; i < projets.length; i++) {
     const projet = projets[i];
     const divGallery = document.querySelector(".gallery");
@@ -22,57 +25,90 @@ function genererProjets(projets) {
   }
 }
 
-// récuperer les projets mis à jour dans la modale
+//recuperer les catégories
+async function genererCategories(categorie) {
+  const filtre = document.querySelector(".filtre");
+  const categorieTous = document.createElement("button");
+  categorieTous.innerText = "Tous";
+  categorieTous.classList.add("button");
+  categorieTous.classList.add("btn-tous");
 
-async function recupererProjets() {
-  const reponse = await fetch("http://localhost:5678/api/works");
-  const projets = await reponse.json();
-  const divGallery = document.getElementById("gallery-modal");
+  filtre.appendChild(categorieTous);
+  for (let i = 0; i < categories.length; i++) {
+    const categorie = categories[i];
 
-  genererProjets(projets);
-  divGallery.innerHTML = "";
-  genererProjetsModif(projets);
+    if (categorie.name !== null) {
+      const divCategorie = document.createElement("button");
+
+      const className = categorie.name.replace(/\s+/g, "-").replace(/&/g, "et");
+
+      divCategorie.classList.add("button");
+      divCategorie.classList.add("btn-" + className);
+
+      divCategorie.innerText = className.replace(/-/g, " "); // pour changer les tirets par des espaces
+
+      filtre.appendChild(divCategorie);
+    }
+  }
 }
+genererCategories();
 
+async function recupererProjets(categorieFiltre = null, mettreAJourModale) {
+  const reponse = await fetch("http://localhost:5678/api/works");
+  let projets = await reponse.json();
+
+  if (mettreAJourModale === true) {
+    const galleryModal = document.getElementById("gallery-modal");
+    galleryModal.innerHTML = "";
+    genererProjetsModal(projets);
+    mettreAJourModale = true;
+  }
+  if (categorieFiltre) {
+    projets = projets.filter(
+      (projet) => projet.category.name === categorieFiltre
+    );
+  }
+  const divGallery = document.querySelector(".gallery");
+  divGallery.innerHTML = "";
+  genererProjets(projets);
+}
 genererProjets(projets);
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                       Les boutons de filtres
 // bouton tous
 const boutonTous = document.querySelector(".btn-tous");
-boutonTous.addEventListener("click", function () {
+
+boutonTous.addEventListener("click", function (event) {
   document.querySelector(".gallery").innerHTML = "";
-  genererProjets(projets);
+  recupererProjets(null, false);
 });
 
 // bouton objets
-const boutonObjets = document.querySelector(".btn-objets");
+const boutonObjets = document.querySelector(".btn-Objets");
 
 boutonObjets.addEventListener("click", function () {
-  const categorieObjet = projets.filter(function (projets) {
-    return projets.category.name === "Objets";
-  });
   document.querySelector(".gallery").innerHTML = "";
-  genererProjets(categorieObjet);
+
+  recupererProjets("Objets", false);
 });
 
 // bouton Appartements
-const boutonAppartements = document.querySelector(".btn-appartements");
+const boutonAppartements = document.querySelector(".btn-Appartements");
 boutonAppartements.addEventListener("click", function () {
-  const categorieAppartements = projets.filter(function (projets) {
-    return projets.category.name === "Appartements";
-  });
   document.querySelector(".gallery").innerHTML = "";
-  genererProjets(categorieAppartements);
+
+  recupererProjets("Appartements", false);
 });
 // bouton HOtel&Restaurants
 const boutonHotelsRestaurants = document.querySelector(
-  ".btn-hotel-restaurants"
+  ".btn-Hotels-et-restaurants"
 );
 boutonHotelsRestaurants.addEventListener("click", function () {
-  const categorieRestaurants = projets.filter(function (projets) {
-    return projets.category.name === "Hotels & restaurants";
-  });
   document.querySelector(".gallery").innerHTML = "";
-  genererProjets(categorieRestaurants);
+
+  recupererProjets("Hotels & restaurants", false);
 });
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // si token.ok {-> générer page modif}
 const loginHeader = document.querySelector(".btn-login");
@@ -104,21 +140,27 @@ function Indexmodif() {
 }
 
 //appliquer la page modif
-const recupererInformations = localStorage.getItem("information");
-const infoUtilisateur = JSON.parse(localStorage.getItem("information"));
 
-if (infoUtilisateur.token) {
+const informationUtilisateur = localStorage.getItem("information");
+const infoUtilisateur = informationUtilisateur
+  ? JSON.parse(informationUtilisateur)
+  : null;
+
+if (infoUtilisateur && infoUtilisateur.token) {
   Indexmodif();
-  genererProjetsModif(projets);
+  genererProjetsModal(projets);
 }
 
 //config bouton "logout" pour supprimer les informations stockées dans le localStorage
 loginHeader.addEventListener("click", async function (event) {
-  event.preventDefault();
-  localStorage.removeItem("information");
-  window.location.reload();
+  if (infoUtilisateur && infoUtilisateur.token) {
+    event.preventDefault();
+    localStorage.removeItem("information");
+    window.location.reload();
+  }
 });
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                  boite modal
 
 let modal = null;
@@ -203,12 +245,12 @@ window.addEventListener("keydown", function (e) {
   }
 });
 
-// function "generer projet" pour modal
-function genererProjetsModif(projets) {
+// function "generer projet" pour modale
+
+async function genererProjetsModal(projets) {
   for (let i = 0; i < projets.length; i++) {
     const projet = projets[i];
-    const divGallery = document.getElementById("gallery-modal");
-    const gallery = document.querySelector(".gallery");
+    const galleryModal = document.getElementById("gallery-modal");
 
     // création des éléments du dom
     const figureElement = document.createElement("figure");
@@ -222,7 +264,7 @@ function genererProjetsModif(projets) {
     figureElement.classList.add("image-modal");
 
     // rattachement des balises au DOM
-    divGallery.appendChild(figureElement);
+    galleryModal.appendChild(figureElement);
     figureElement.appendChild(imageElement);
     figureElement.appendChild(trashImage);
 
@@ -242,8 +284,7 @@ function genererProjetsModif(projets) {
       });
 
       if (reponse.ok) {
-        divGallery.removeChild(figureElement);
-        gallery.innerHTML = "";
+        galleryModal.removeChild(figureElement);
         await recupererProjets();
       } else {
         alert("La supression du projet a échoué");
@@ -252,9 +293,9 @@ function genererProjetsModif(projets) {
   }
 }
 
-// ajout des catégories
+// ajout des catégories de la modale
 
-async function genererCategories(categorie) {
+async function genererCategoriesModal(categorie) {
   const c = await fetch("http://localhost:5678/api/categories");
   let categories = await c.json();
 
@@ -271,9 +312,10 @@ async function genererCategories(categorie) {
     select.appendChild(optionElement);
   }
 }
-genererCategories();
+genererCategoriesModal();
 
 // prévisualiser la photo ajoutée :
+
 let imagePreview = document.getElementById("imagePreview");
 let icone = document.querySelector(".fa-image");
 let label = document.querySelector(".label-file");
@@ -347,7 +389,7 @@ const AddPictures = async function (event) {
     if (reponse.ok) {
       const divGallery = document.querySelector(".gallery");
       const borderButton = document.getElementById("div-ok");
-
+      const gallery = document.getElementById("gallery-modal");
       if (!textAdd) {
         const MessageConfirmationAjout = document.createElement("p");
         MessageConfirmationAjout.innerText =
@@ -359,7 +401,8 @@ const AddPictures = async function (event) {
 
       console.log("Succès:", data);
       divGallery.innerHTML = "";
-      await recupererProjets();
+      gallery.innerHTML = "";
+      await recupererProjets(null, true);
     }
   } catch (error) {
     console.log(error);
@@ -370,7 +413,7 @@ const AddPictures = async function (event) {
 
 formulaire.addEventListener("submit", AddPictures);
 
-// pour activer le bouton valider
+// pour activer le bouton valider (le dégriser)
 
 function validateForm() {
   const titre = formulaire.querySelector("[name=titre]").value.trim();
